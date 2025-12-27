@@ -6,36 +6,37 @@ from langgraph.graph import StateGraph, START, END
 # 1. Define State
 class State(TypedDict):
     topic: str
-    joke: str
-    improved_joke: str
+    Explanation: str
+    Simplified: str
 
 # 2. Define Nodes
 llm = ChatOllama(model="llama3.2")
 
-def generate_joke(state: State):
-    print(f"--- Generating Joke about {state['topic']} ---")
-    msg = HumanMessage(content=f"Tell me a short joke about {state['topic']}.")
-    response = llm.invoke([msg])
-    return {"joke": response.content}
+def generate_explanation(State):
+    print(f"Generating explanation about {State['topic']}")
+    user_query = HumanMessage(content=f"what are {State['topic']}")
+    response = llm.invoke([user_query])
+    print(response.content)
+    return {"Explanation":response.content}
 
-def improve_joke(state: State):
-    print("--- Improving Joke ---")
-    msg = HumanMessage(content=f"Make this joke funnier and shorter: {state['joke']}")
-    response = llm.invoke([msg])
-    return {"improved_joke": response.content}
+def simplify_explanation(State):
+    print(f"Simplifying explanation about")
+    user_query = HumanMessage(content=f"Simplify the explanation to 2 to 3 lines. Explanation: {State}")
+    response = llm.invoke([user_query])
+    print(response.content)
+    return {"Simplified":response.content}
 
-# 3. Build Graph
+
 builder = StateGraph(State)
-builder.add_node("generator", generate_joke)
-builder.add_node("improver", improve_joke)
+builder.add_node("Explain", generate_explanation)
+builder.add_node("Simplify", simplify_explanation)
 
-builder.add_edge(START, "generator")
-builder.add_edge("generator", "improver")
-builder.add_edge("improver", END)
+builder.add_edge(START, "Explain")
+builder.add_edge("Explain", "Simplify")
+builder.add_edge("Simplify", END)
 
-# 4. Compile and Run
 graph = builder.compile()
+result = graph.invoke({"topic":"Black holes"})
+print(result['Simplified'])
 
-print("--- Running Graph ---")
-result = graph.invoke({"topic": "AI Agents"})
-print(f"\nFinal Result:\n{result['improved_joke']}")
+

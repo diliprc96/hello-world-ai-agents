@@ -1,22 +1,38 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from typing import List
 from langchain_ollama import ChatOllama
+from langchain_core.messages import HumanMessage
+import json
 
-# 1. Define Pydantic Model
-class Joke(BaseModel):
-    setup: str = Field(description="The setup of the joke")
-    punchline: str = Field(description="The punchline of the joke")
-    rating: int = Field(description="How funny the joke is from 1-10")
+class WeatherData(BaseModel):
+    city: str
+    temperature: float
+    humidity: int
+    conditions: str
+    forecast: List[str]
 
-# 2. Setup LLM with structured output
-# Ensure you have pulled the model first: `ollama pull llama3.2`
-llm = ChatOllama(model="llama3.2", temperature=0)
-structured_llm = llm.with_structured_output(Joke)
+llm = ChatOllama(model="llama3.2")
 
-# 3. Invoke
-print("--- Generating Structured Joke ---")
-response = structured_llm.invoke("Tell me a joke about Python programming.")
+# First prompt with explicit JSON structure
+prompt = HumanMessage(content="Generate a weather forecast for Bengaluru in JSON format with the following keys: city, temperature, humidity, conditions, forecast. Example: {\"city\": \"Bengaluru\", \"temperature\": 28.5, \"humidity\": 70, \"conditions\": \"Partly cloudy\", \"forecast\": [\"Sunny\", \"Partly cloudy\", \"Rain\"]}")
 
-# 4. Use the object
-print(f"\nSetup: {response.setup}")
-print(f"Punchline: {response.punchline}")
-print(f"Rating: {response.rating}/10")
+response = llm.invoke([prompt])
+print("Raw LLM Output:", response.content)
+
+try:
+    llm_output = json.loads(response.content)
+    validated_weather = WeatherData(**llm_output)
+    print("Validated Weather Data:", validated_weather)
+except Exception as e:
+    print("Validation Error:", e)
+    # Create a targeted correction prompt
+    error_str = str(e)
+    correction_prompt = HumanMessage(content=f"Correct the following JSON to match the schema: {response.content}. Error: {error_str}. Please fix the issue and output only valid JSON with the correct types and keys: city (str), temperature (float), humidity (int), conditions (str), forecast (list of str).")
+    correction_response = llm.invoke([correction_prompt])
+    print("Corrected LLM Output:", correction_response.content)
+    try:
+        corrected_output = json.loads(correction_response.content)
+        validated_weather = WeatherData(**corrected_output)
+        print("Validated Corrected Weather Data:", validated_weather)
+    except Exception as e:
+        print("Still invalid after correction:", e)

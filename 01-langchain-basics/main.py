@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage
 llm = ChatOllama(model="llama3.2")
 
 # 2. Define the input
-message = HumanMessage(content="Tell me a short joke about Python programming.")
+message = HumanMessage(content="what are blackholes?")
 
 # 3. Call the model and stream the response
 print("🤖 AI Response:\n")
